@@ -1,0 +1,6 @@
+Packages:
+1.mediapipe 
+2.opencv-python
+
+Languages:
+Python 3.12
