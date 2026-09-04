@@ -1,17 +1,31 @@
 import cv2
 import mediapipe as mp
 
+from pathlib import Path
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
+
+MODEL_PATH = Path(__file__).parent / "hand_landmarker.task"
+
+print(f"Model: {MODEL_PATH}")
+print(f"Exists: {MODEL_PATH.exists()}")
+print(f"Size: {MODEL_PATH.stat().st_size:,} bytes")
 
 
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=2,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.7,
+base_options = python.BaseOptions(
+    model_asset_buffer=MODEL_PATH.read_bytes()
 )
+
+options = vision.HandLandmarkerOptions(
+    base_options=base_options,
+    num_hands=2,
+    min_hand_detection_confidence=0.5,
+    min_hand_presence_confidence=0.5,
+    min_tracking_confidence=0.5,
+)
+
+detector = vision.HandLandmarker.create_from_options(options)
 
 
 cap = cv2.VideoCapture(0)
@@ -27,18 +41,34 @@ while True:
         print("Could not read frame")
         break
 
-    # OpenCV uses BGR, MediaPipe expects RGB
+    # OpenCV → RGB
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    results = hands.process(rgb_frame)
+    # Create MediaPipe image
+    mp_image = mp.Image(
+        image_format=mp.ImageFormat.SRGB,
+        data=rgb_frame,
+    )
 
-    # Draw detected hands
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(
+    # Detect hands
+    result = detector.detect(mp_image)
+
+    # Draw landmarks
+    for hand_landmarks in result.hand_landmarks:
+
+        for landmark in hand_landmarks:
+
+            h, w, _ = frame.shape
+
+            x = int(landmark.x * w)
+            y = int(landmark.y * h)
+
+            cv2.circle(
                 frame,
-                hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,
+                (x, y),
+                5,
+                (0, 255, 0),
+                -1,
             )
 
     cv2.imshow("ISL Sign Language - Phase 1", frame)
@@ -50,4 +80,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-hands.close()
+detector.close()
