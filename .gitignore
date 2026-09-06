@@ -47,3 +47,7 @@ Desktop.ini
 **/.venv/
 __pycache__/
 *.pyc
+.venv/
+**/.venv/
+__pycache__/
+*.pyc
