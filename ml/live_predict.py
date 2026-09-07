@@ -7,6 +7,19 @@ import numpy as np
 import mediapipe as mp
 from tensorflow.keras.models import load_model
 
+IGNORED_SIGNS = {
+    "Beautiful",
+    "Blind",
+    "Deaf",
+    "HELLO",
+    "loud",
+    "quiet",
+    "sad",
+    "Ugly",
+    "NEUTRAL",
+}
+
+
 from ml.config import (
     MODELS_DIR,
     SEQUENCE_LENGTH,
@@ -469,47 +482,31 @@ def main():
 
                     if stable_prediction is not None:
 
-                        last_stable_prediction = (
-                            stable_prediction
-                        )
+                        last_stable_prediction = stable_prediction
+                        normalized_prediction = stable_prediction.strip().upper()
 
-                        # -------------------------------------------------
-                        # Prevent repeated detection of a held sign.
-                        # -------------------------------------------------
+                        # Ignore unwanted predictions
+                        if normalized_prediction == "LOUD":
+                            displayed_prediction = ""
+                            last_stored_sign = None
 
-                        if (
-                            stable_prediction
-                            != last_stored_sign
-                        ):
+                        elif normalized_prediction in IGNORED_SIGNS:
+                            displayed_prediction = ""
+                            last_stored_sign = None
 
-                            was_added = (
-                                builder.add_word(
-                                    stable_prediction
-                                )
-                            )
+                        elif stable_prediction != last_stored_sign:
+                            displayed_prediction = stable_prediction
+
+                            was_added = builder.add_word(stable_prediction)
 
                             if was_added:
+                                last_stored_sign = stable_prediction
 
-                                last_stored_sign = (
-                                    stable_prediction
-                                )
+                                print(f"Stored sign: {stable_prediction}")
 
-                                print(
-                                    f"Stored sign: "
-                                    f"{stable_prediction}"
-                                )
+                                speech.speak_word(stable_prediction)
 
-                                # -------------------------------------------------
-                                # Speak individual recognized sign.
-                                # -------------------------------------------------
-
-                                speech.speak_word(
-                                    stable_prediction
-                                )
-
-                                status_text = (
-                                    "Listening..."
-                                )
+                                status_text = "Listening..."
 
                 else:
 
